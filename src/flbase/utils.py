@@ -5,7 +5,6 @@ sys.path.append("../../")
 from copy import deepcopy
 from src.utils import sampler, sampler_reuse, DatasetSplit, setup_seed
 import numpy as np
-from src.flbase.optimizers.sam import SAM
 """
 Configure Optimizer
 """
@@ -17,10 +16,6 @@ def setup_optimizer(model, config, round):
             lr = config['client_lr']
         else:
             lr = config['client_lr'] * 0.1
-        # elif round < config['num_rounds'] * 3 // 4:
-        #     lr = config['client_lr'] * 0.1
-        # else:
-        #     lr = config['client_lr'] * 0.01
 
     elif config['client_lr_scheduler'] == 'diminishing':
         lr = config['client_lr'] * (config['lr_decay_per_round'] ** (round - 1))
@@ -44,15 +39,7 @@ def setup_optimizer(model, config, round):
                                         momentum=config['rmsprop_momentum'])
     else:
         raise ValueError(f"Unknown optimizer{config['optimizer']}")
-    if config['use_sam']:
-        if config['optimizer'] == 'SGD':
-            sam_optimizer = SAM(model.parameters(), torch.optim.SGD, rho=config['sam_rho'], adaptive=config['sam_adaptive'],
-                                lr=lr, momentum=config['sgd_momentum'], weight_decay=config['sgd_weight_decay'])
-        else:
-            raise ValueError(f"No implementation for SAM version of {config['optimizer']}")
-        return sam_optimizer
-    else:
-        return optimizer
+    return optimizer
 
 
 """
@@ -151,31 +138,6 @@ def create_clients_from_existing_ones(Client, clients_dict, newtrainset, increme
             client.group,
             client.device, **kwargs)
     return all_clients_dict
-# def create_clients_from_existing_ones(Client, clients_dict, newtrainset, increment, criterion, **kwargs):
-#     """
-#         Create new clients. All clients will maintain the same data distribution as specified in clients_dict.
-#     """
-#     num_clients = len(clients_dict)
-#     all_clients_dict = {}
-#     upsample = len(newtrainset) // increment - 1
-#     for cid in range(num_clients):
-#         client = clients_dict[cid]
-#         data_idxs = client.trainset.idxs
-#         add_idxs = []
-#         for i in data_idxs:
-#             for j in range(upsample):
-#                 add_idxs.append(i + increment * (j+1))
-#         full_idxs = data_idxs + add_idxs
-#         client_newtrainset = DatasetSplit(newtrainset, full_idxs)
-#         all_clients_dict[cid] = Client(
-#             criterion,
-#             client_newtrainset,
-#             client.testset,
-#             client.client_config,
-#             client.cid,
-#             client.group,
-#             client.device, **kwargs)
-#     return all_clients_dict
 
 
 """
